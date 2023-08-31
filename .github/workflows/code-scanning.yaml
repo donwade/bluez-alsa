@@ -61,6 +61,7 @@ jobs:
         ${{ github.workspace }}/configure \
           --enable-aac \
           --enable-faststream \
+          --enable-midi \
           --enable-mp3lame \
           --enable-mpg123 \
           --enable-msbc \
@@ -123,6 +124,7 @@ jobs:
           --enable-debug \
           --enable-debug-time \
           --enable-faststream \
+          --enable-midi \
           --enable-mp3lame \
           --enable-mpg123 \
           --enable-msbc \
