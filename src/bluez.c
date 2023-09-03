@@ -41,6 +41,9 @@
 #include "bluealsa-config.h"
 #include "bluealsa-dbus.h"
 #include "bluez-iface.h"
+#if ENABLE_MIDI
+# include "bluez-midi.h"
+#endif
 #include "dbus.h"
 #include "hci.h"
 #include "sco.h"
@@ -84,6 +87,10 @@ struct bluez_adapter {
 	GDBusObjectManagerServer *manager_media_application;
 	/* manager for battery provider objects */
 	GDBusObjectManagerServer *manager_battery_provider;
+#if ENABLE_MIDI
+	/* manager for MIDI GATT objects */
+	GDBusObjectManagerServer *manager_midi_application;
+#endif
 	/* array of end-points for connected devices */
 	GHashTable *device_sep_map;
 };
@@ -197,6 +204,21 @@ static void bluez_register_battery_provider(struct bluez_adapter *b_adapter) {
 
 }
 
+#if ENABLE_MIDI
+/**
+ * Register BLE MIDI application in BlueZ. */
+static void bluez_register_midi_application(struct bluez_adapter *b_adapter) {
+
+	char path[64];
+	struct ba_adapter *a = b_adapter->adapter;
+	snprintf(path, sizeof(path), "/org/bluez/%s/MIDI", a->hci.name);
+
+	GDBusObjectManagerServer *manager = bluez_midi_app_new(a, path);
+	b_adapter->manager_midi_application = manager;
+
+}
+#endif
+
 static struct bluez_adapter *bluez_adapter_new(struct ba_adapter *a) {
 
 	struct bluez_adapter *ba = &bluez_adapters[a->hci.dev_id];
@@ -214,6 +236,11 @@ static struct bluez_adapter *bluez_adapter_new(struct ba_adapter *a) {
 		bluez_register_a2dp_all(a);
 	}
 
+#if ENABLE_MIDI
+	if (config.profile.midi)
+		bluez_register_midi_application(ba);
+#endif
+
 	return ba;
 }
 
@@ -230,6 +257,12 @@ static void bluez_adapter_free(struct bluez_adapter *b_adapter) {
 		g_object_unref(b_adapter->manager_battery_provider);
 		b_adapter->manager_battery_provider = NULL;
 	}
+#if ENABLE_MIDI
+	if (b_adapter->manager_midi_application != NULL) {
+		g_object_unref(b_adapter->manager_midi_application);
+		b_adapter->manager_midi_application = NULL;
+	}
+#endif
 	ba_adapter_destroy(b_adapter->adapter);
 	b_adapter->adapter = NULL;
 }
@@ -1220,7 +1253,6 @@ static void bluez_register(void) {
 				if (uuids[ii].enabled && !uuids[ii].global && adapters_profiles[i] & uuids[ii].profile)
 					warn("UUID already registered in BlueZ [%s]: %s", a->hci.name, uuids[ii].uuid);
 
-			/* register media endpoints */
 			bluez_adapter_new(a);
 
 		}
