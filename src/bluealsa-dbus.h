@@ -1,6 +1,6 @@
 /*
  * BlueALSA - bluealsa-dbus.h
- * Copyright (c) 2016-2022 Arkadiusz Bokowy
+ * Copyright (c) 2016-2023 Arkadiusz Bokowy
  *
  * This file is a part of bluez-alsa.
  *
@@ -20,6 +20,9 @@
 
 #include "ba-rfcomm.h"
 #include "ba-device.h"
+#if ENABLE_MIDI
+# include "ba-transport-midi.h"
+#endif
 #include "ba-transport-pcm.h"
 
 #define BA_DBUS_PCM_UPDATE_FORMAT           (1 << 0)
@@ -40,6 +43,11 @@ GVariant *ba_variant_new_device_path(const struct ba_device *d);
 GVariant *ba_variant_new_device_battery(const struct ba_device *d);
 
 void bluealsa_dbus_register(void);
+
+#if ENABLE_MIDI
+int bluealsa_dbus_midi_register(struct ba_transport_midi *midi);
+void bluealsa_dbus_midi_unregister(struct ba_transport_midi *midi);
+#endif
 
 int bluealsa_dbus_pcm_register(struct ba_transport_pcm *pcm);
 void bluealsa_dbus_pcm_update(struct ba_transport_pcm *pcm, unsigned int mask);

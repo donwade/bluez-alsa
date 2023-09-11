@@ -12,6 +12,10 @@
 #ifndef BLUEALSA_BLUEALSAIFACE_H_
 #define BLUEALSA_BLUEALSAIFACE_H_
 
+#if HAVE_CONFIG_H
+# include <config.h>
+#endif
+
 #include <gio/gio.h>
 #include <glib.h>
 
@@ -20,6 +24,7 @@
 #define BLUEALSA_SERVICE "org.bluealsa"
 
 #define BLUEALSA_IFACE_MANAGER BLUEALSA_SERVICE ".Manager1"
+#define BLUEALSA_IFACE_MIDI    BLUEALSA_SERVICE ".MIDI1"
 #define BLUEALSA_IFACE_PCM     BLUEALSA_SERVICE ".PCM1"
 #define BLUEALSA_IFACE_RFCOMM  BLUEALSA_SERVICE ".RFCOMM1"
 
@@ -34,6 +39,9 @@
 #define BLUEALSA_TRANSPORT_TYPE_HSP_AG      BLUEALSA_TRANSPORT_TYPE_HSP "-AG"
 #define BLUEALSA_TRANSPORT_TYPE_HSP_HS      BLUEALSA_TRANSPORT_TYPE_HSP "-HS"
 #define BLUEALSA_TRANSPORT_TYPE_MIDI        "MIDI"
+
+#define BLUEALSA_MIDI_MODE_INPUT  "input"
+#define BLUEALSA_MIDI_MODE_OUTPUT "output"
 
 #define BLUEALSA_PCM_CTRL_DRAIN  "Drain"
 #define BLUEALSA_PCM_CTRL_DROP   "Drop"
@@ -50,6 +58,18 @@ typedef struct {
 OrgBluealsaManager1Skeleton *org_bluealsa_manager1_skeleton_new(
 		const GDBusInterfaceSkeletonVTable *vtable, void *userdata,
 		GDestroyNotify userdata_free_func);
+
+#if ENABLE_MIDI
+
+typedef struct {
+	GDBusInterfaceSkeletonEx parent;
+} OrgBluealsaMidi1Skeleton;
+
+OrgBluealsaMidi1Skeleton *org_bluealsa_midi1_skeleton_new(
+		const GDBusInterfaceSkeletonVTable *vtable, void *userdata,
+		GDestroyNotify userdata_free_func);
+
+#endif
 
 typedef struct {
 	GDBusInterfaceSkeletonEx parent;

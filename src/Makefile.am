@@ -85,7 +85,10 @@ endif
 
 if ENABLE_MIDI
 bluealsa_SOURCES += \
-	bluez-midi.c
+	ba-transport-midi.c \
+	ble-midi.c \
+	bluez-midi.c \
+	midi.c
 endif
 
 if ENABLE_MPEG

@@ -11,6 +11,14 @@
 	           the first interface must have at least one method.
 	-->
 
+	<interface name="org.bluealsa.MIDI1">
+		<annotation name="org.gtk.GDBus.CPP.if" value="ENABLE_MIDI"/>
+		<method name="Open">
+			<arg direction="out" type="h" name="fd_midi"/>
+		</method>
+		<property name="Mode" type="s" access="read"/>
+	</interface>
+
 	<interface name="org.bluealsa.PCM1">
 		<method name="Open">
 			<arg direction="out" type="h" name="fd_pcm"/>

@@ -32,14 +32,14 @@
 #include "ba-device.h"
 #include "ba-rfcomm.h"
 #include "ba-transport.h"
+#include "ba-transport-midi.h"
 #include "ba-transport-pcm.h"
 #include "bluealsa-config.h"
 #include "bluealsa-dbus.h"
 #include "bluez.h"
 #include "hfp.h"
-#if ENABLE_OFONO
-# include "ofono.h"
-#endif
+#include "midi.h"
+#include "ofono.h"
 #include "storage.h"
 #include "shared/a2dp-codecs.h"
 #include "shared/log.h"
@@ -51,9 +51,15 @@
 
 void a2dp_transport_init(struct ba_transport *t) { (void)t; }
 int a2dp_transport_start(struct ba_transport *t) { (void)t; return 0; }
+int midi_transport_start(struct ba_transport *t) { (void)t; return 0; }
+int midi_transport_stop(struct ba_transport *t) { (void)t; return 0; }
 void *sco_enc_thread(struct ba_transport_pcm *t_pcm);
 
 void *ba_rfcomm_thread(struct ba_transport *t) { (void)t; return 0; }
+int bluealsa_dbus_midi_register(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; return 0; }
+void bluealsa_dbus_midi_unregister(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; }
 int bluealsa_dbus_pcm_register(struct ba_transport_pcm *pcm) {
 	debug("%s: %p", __func__, (void *)pcm); (void)pcm; return 0; }
 void bluealsa_dbus_pcm_update(struct ba_transport_pcm *pcm, unsigned int mask) {

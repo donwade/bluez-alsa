@@ -6,6 +6,7 @@ man1_MANS =
 man7_MANS = \
 	bluealsa-plugins.7 \
 	org.bluealsa.Manager1.7 \
+	org.bluealsa.MIDI1.7 \
 	org.bluealsa.PCM1.7 \
 	org.bluealsa.RFCOMM1.7
 

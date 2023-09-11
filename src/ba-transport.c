@@ -42,6 +42,9 @@
 #include "bluez.h"
 #include "hci.h"
 #include "hfp.h"
+#if ENABLE_MIDI
+# include "midi.h"
+#endif
 #include "sco.h"
 #include "storage.h"
 #include "shared/a2dp-codecs.h"
@@ -897,8 +900,14 @@ struct ba_transport *ba_transport_new_midi(
 
 	t->profile = profile;
 
+	transport_midi_init(&t->midi.midi_in, BA_TRANSPORT_MIDI_MODE_INPUT, t);
+	transport_midi_init(&t->midi.midi_out, BA_TRANSPORT_MIDI_MODE_OUTPUT, t);
+
 	t->acquire = transport_acquire_bt_midi;
 	t->release = transport_release_bt_midi;
+
+	bluealsa_dbus_midi_register(&t->midi.midi_in);
+	bluealsa_dbus_midi_register(&t->midi.midi_out);
 
 	return t;
 }
@@ -1059,6 +1068,12 @@ void ba_transport_destroy(struct ba_transport *t) {
 			ba_rfcomm_destroy(t->sco.rfcomm);
 		t->sco.rfcomm = NULL;
 	}
+#if ENABLE_MIDI
+	else if (t->profile & BA_TRANSPORT_PROFILE_MIDI) {
+		bluealsa_dbus_midi_unregister(&t->midi.midi_in);
+		bluealsa_dbus_midi_unregister(&t->midi.midi_out);
+	}
+#endif
 
 	/* stop transport IO threads */
 	ba_transport_stop(t);
@@ -1128,6 +1143,12 @@ void ba_transport_unref(struct ba_transport *t) {
 		free(t->sco.ofono_dbus_path_modem);
 #endif
 	}
+#if ENABLE_MIDI
+	else if (t->profile & BA_TRANSPORT_PROFILE_MIDI) {
+		transport_midi_free(&t->midi.midi_in);
+		transport_midi_free(&t->midi.midi_out);
+	}
+#endif
 
 #if DEBUG
 	/* If IO threads are not terminated yet, we can not go any further.
@@ -1320,6 +1341,11 @@ void ba_transport_set_codec(
  *   errno is set to indicate the error. */
 int ba_transport_start(struct ba_transport *t) {
 
+#if ENABLE_MIDI
+	if (t->profile & BA_TRANSPORT_PROFILE_MIDI)
+		return midi_transport_start(t);
+#endif
+
 	/* For A2DP Source profile only, it is possible that BlueZ will
 	 * activate the transport following a D-Bus "Acquire" request before the
 	 * client thread has completed the acquisition procedure by initializing
@@ -1356,6 +1382,12 @@ int ba_transport_start(struct ba_transport *t) {
  * This function waits for transport IO threads termination. It is not safe
  * to call it from IO thread itself - it will cause deadlock! */
 int ba_transport_stop(struct ba_transport *t) {
+
+#if ENABLE_MIDI
+	if (t->profile & BA_TRANSPORT_PROFILE_MIDI)
+		// FIXME: Skip thread termination for MIDI profile.
+		midi_transport_stop(t);
+#endif
 
 	if (ba_transport_thread_state_check_terminated(&t->thread_enc) &&
 			ba_transport_thread_state_check_terminated(&t->thread_dec))

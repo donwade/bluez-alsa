@@ -36,6 +36,8 @@
 #include "ba-adapter.h"
 #include "ba-device.h"
 #include "ba-transport.h"
+#include "ba-transport-midi.h"
+#include "ba-transport-pcm.h"
 #include "bluealsa-config.h"
 #include "bluealsa-iface.h"
 #include "bluez.h"
@@ -223,6 +225,14 @@ static GVariant *ba_variant_new_rfcomm_features(const struct ba_rfcomm *r) {
 	return g_variant_new_strv(strv, n);
 }
 
+#if ENABLE_MIDI
+static GVariant *ba_variant_new_midi_mode(const struct ba_transport_midi *midi) {
+	if (midi->mode == BA_TRANSPORT_MIDI_MODE_INPUT)
+		return g_variant_new_string(BLUEALSA_MIDI_MODE_INPUT);
+	return g_variant_new_string(BLUEALSA_MIDI_MODE_OUTPUT);
+}
+#endif
+
 static GVariant *ba_variant_new_pcm_mode(const struct ba_transport_pcm *pcm) {
 	if (pcm->mode == BA_TRANSPORT_PCM_MODE_SOURCE)
 		return g_variant_new_string(BLUEALSA_PCM_MODE_SOURCE);
@@ -391,17 +401,145 @@ void bluealsa_dbus_register(void) {
 
 }
 
+#if ENABLE_MIDI
+
+static void bluealsa_midi_open(GDBusMethodInvocation *inv, void *userdata) {
+
+	struct ba_transport_midi *midi = userdata;
+	const bool is_input = midi->mode == BA_TRANSPORT_MIDI_MODE_INPUT;
+	int pipe_fds[2] = { -1, -1 };
+
+	/* Prevent two (or more) clients trying to
+	 * open the same MIDI at the same time. */
+	pthread_mutex_lock(&midi->client_mtx);
+
+	pthread_mutex_lock(&midi->mutex);
+	const int midi_fd = midi->fd;
+	pthread_mutex_unlock(&midi->mutex);
+
+	if (midi_fd != -1) {
+		g_dbus_method_invocation_return_error(inv, G_DBUS_ERROR,
+				G_DBUS_ERROR_FAILED, "%s", strerror(EBUSY));
+		goto fail;
+	}
+
+	/* create MIDI stream PIPE */
+	if (pipe2(&pipe_fds[0], O_CLOEXEC) == -1) {
+		g_dbus_method_invocation_return_error(inv, G_DBUS_ERROR,
+				G_DBUS_ERROR_FAILED, "Create PIPE: %s", strerror(errno));
+		goto fail;
+	}
+
+	pthread_mutex_lock(&midi->mutex);
+	/* get correct PIPE endpoint - PIPE is unidirectional */
+	midi->fd = pipe_fds[is_input ? 1 : 0];
+	pthread_mutex_unlock(&midi->mutex);
+
+	if (ba_transport_start(midi->t) == -1) {
+		g_dbus_method_invocation_return_error(inv, G_DBUS_ERROR,
+				G_DBUS_ERROR_FAILED, "Start transport: %s", strerror(errno));
+		midi->fd = -1;
+		goto fail;
+	}
+
+	int fds[1] = { pipe_fds[is_input ? 0 : 1] };
+	GUnixFDList *fd_list = g_unix_fd_list_new_from_array(fds, 1);
+	g_dbus_method_invocation_return_value_with_unix_fd_list(inv,
+			g_variant_new("(h)", 0), fd_list);
+	g_object_unref(fd_list);
+
+	pthread_mutex_unlock(&midi->client_mtx);
+	return;
+
+fail:
+	pthread_mutex_unlock(&midi->client_mtx);
+	/* clean up created file descriptors */
+	for (size_t i = 0; i < ARRAYSIZE(pipe_fds); i++)
+		if (pipe_fds[i] != -1)
+			close(pipe_fds[i]);
+}
+
+static GVariant *bluealsa_midi_get_property(const char *property,
+		GError **error, void *userdata) {
+	(void)error;
+
+	struct ba_transport_midi *midi = userdata;
+
+	if (strcmp(property, "Mode") == 0)
+		return ba_variant_new_midi_mode(midi);
+
+	g_assert_not_reached();
+	return NULL;
+}
+
+/**
+ * Register BlueALSA D-Bus MIDI interface. */
+int bluealsa_dbus_midi_register(struct ba_transport_midi *midi) {
+
+	static const GDBusMethodCallDispatcher dispatchers[] = {
+		{ .method = "Open",
+			.handler = bluealsa_midi_open },
+		{ 0 },
+	};
+
+	static const GDBusInterfaceSkeletonVTable vtable = {
+		.dispatchers = dispatchers,
+		.get_property = bluealsa_midi_get_property,
+	};
+
+	GDBusObjectSkeleton *skeleton = NULL;
+	OrgBluealsaMidi1Skeleton *ifs_midi = NULL;
+
+	if ((skeleton = g_dbus_object_skeleton_new(midi->ba_dbus_path)) == NULL)
+		goto fail;
+
+	if ((ifs_midi = org_bluealsa_midi1_skeleton_new(&vtable,
+					midi, (GDestroyNotify)ba_transport_midi_unref)) == NULL)
+		goto fail;
+
+	g_dbus_interface_skeleton_set_flags(G_DBUS_INTERFACE_SKELETON(ifs_midi),
+			G_DBUS_INTERFACE_SKELETON_FLAGS_HANDLE_METHOD_INVOCATIONS_IN_THREAD);
+
+	ba_transport_midi_ref(midi);
+
+	g_dbus_object_skeleton_add_interface(skeleton, G_DBUS_INTERFACE_SKELETON(ifs_midi));
+	g_dbus_object_manager_server_export(bluealsa_dbus_manager, skeleton);
+	midi->ba_dbus_exported = true;
+
+fail:
+
+	if (skeleton != NULL)
+		g_object_unref(skeleton);
+	if (ifs_midi != NULL)
+		g_object_unref(ifs_midi);
+
+	return 0;
+}
+
+void bluealsa_dbus_midi_unregister(struct ba_transport_midi *midi) {
+	if (!midi->ba_dbus_exported)
+		return;
+	g_dbus_object_manager_server_unexport(bluealsa_dbus_manager, midi->ba_dbus_path);
+	midi->ba_dbus_exported = false;
+}
+
+#endif
+
 static gboolean bluealsa_pcm_controller(GIOChannel *ch, GIOCondition condition,
 		void *userdata) {
 	(void)condition;
 
 	struct ba_transport_pcm *pcm = userdata;
+	GError *err = NULL;
 	char command[32];
 	size_t len;
 
-	switch (g_io_channel_read_chars(ch, command, sizeof(command), &len, NULL)) {
+	switch (g_io_channel_read_chars(ch, command, sizeof(command), &len, &err)) {
+	case G_IO_STATUS_AGAIN:
+		return TRUE;
 	case G_IO_STATUS_ERROR:
-		error("Couldn't read controller channel");
+		error("PCM controller read error: %s", err->message);
+		g_error_free(err);
 		return TRUE;
 	case G_IO_STATUS_NORMAL:
 		if (strncmp(command, BLUEALSA_PCM_CTRL_DRAIN, len) == 0) {
@@ -427,8 +565,6 @@ static gboolean bluealsa_pcm_controller(GIOChannel *ch, GIOCondition condition,
 			g_io_channel_write_chars(ch, "Invalid", -1, &len, NULL);
 		}
 		g_io_channel_flush(ch, NULL);
-		return TRUE;
-	case G_IO_STATUS_AGAIN:
 		return TRUE;
 	case G_IO_STATUS_EOF:
 		pthread_mutex_lock(&pcm->mutex);
@@ -1032,13 +1168,10 @@ void bluealsa_dbus_pcm_update(struct ba_transport_pcm *pcm, unsigned int mask) {
 }
 
 void bluealsa_dbus_pcm_unregister(struct ba_transport_pcm *pcm) {
-
 	if (!pcm->ba_dbus_exported)
 		return;
-
 	g_dbus_object_manager_server_unexport(bluealsa_dbus_manager, pcm->ba_dbus_path);
 	pcm->ba_dbus_exported = false;
-
 }
 
 static GVariant *bluealsa_rfcomm_get_property(const char *property,

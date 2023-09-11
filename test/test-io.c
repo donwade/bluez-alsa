@@ -64,12 +64,14 @@
 #include "ba-device.h"
 #include "ba-rfcomm.h"
 #include "ba-transport.h"
+#include "ba-transport-midi.h"
 #include "ba-transport-pcm.h"
 #include "bluealsa-config.h"
 #include "bluealsa-dbus.h"
 #include "bluez.h"
 #include "hfp.h"
 #include "io.h"
+#include "midi.h"
 #if ENABLE_OFONO
 # include "ofono.h"
 #endif
@@ -111,6 +113,10 @@ void *a2dp_sbc_enc_thread(struct ba_transport_pcm *t_pcm);
 void *sco_dec_thread(struct ba_transport_pcm *t_pcm);
 void *sco_enc_thread(struct ba_transport_pcm *t_pcm);
 
+int bluealsa_dbus_midi_register(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; return 0; }
+void bluealsa_dbus_midi_unregister(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; }
 int bluealsa_dbus_pcm_register(struct ba_transport_pcm *pcm) {
 	debug("%s: %p", __func__, (void *)pcm); (void)pcm; return 0; }
 void bluealsa_dbus_pcm_update(struct ba_transport_pcm *pcm, unsigned int mask) {
@@ -129,6 +135,8 @@ bool bluez_a2dp_set_configuration(const char *current_dbus_sep_path,
 	(void)current_dbus_sep_path; (void)sep; (void)error; return false; }
 int ofono_call_volume_update(struct ba_transport *t) {
 	debug("%s: %p", __func__, t); (void)t; return 0; }
+int midi_transport_start(struct ba_transport *t) { (void)t; return 0; }
+int midi_transport_stop(struct ba_transport *t) { (void)t; return 0; }
 int storage_device_load(const struct ba_device *d) { (void)d; return 0; }
 int storage_device_save(const struct ba_device *d) { (void)d; return 0; }
 int storage_pcm_data_sync(struct ba_transport_pcm *pcm) { (void)pcm; return 0; }

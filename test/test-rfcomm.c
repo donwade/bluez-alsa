@@ -30,6 +30,7 @@
 #include "ba-device.h"
 #include "ba-rfcomm.h"
 #include "ba-transport.h"
+#include "ba-transport-midi.h"
 #include "ba-transport-pcm.h"
 #include "bluealsa-config.h"
 #include "bluealsa-dbus.h"
@@ -60,11 +61,17 @@ static void dbus_update_counters_wait(unsigned int *counter, unsigned int value)
 
 void a2dp_transport_init(struct ba_transport *t) { (void)t; }
 int a2dp_transport_start(struct ba_transport *t) { (void)t; return 0; }
+int midi_transport_start(struct ba_transport *t) { (void)t; return 0; }
+int midi_transport_stop(struct ba_transport *t) { (void)t; return 0; }
 int storage_device_load(const struct ba_device *d) { (void)d; return 0; }
 int storage_device_save(const struct ba_device *d) { (void)d; return 0; }
 int storage_pcm_data_sync(struct ba_transport_pcm *pcm) { (void)pcm; return 0; }
 int storage_pcm_data_update(const struct ba_transport_pcm *pcm) { (void)pcm; return 0; }
 
+int bluealsa_dbus_midi_register(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; return 0; }
+void bluealsa_dbus_midi_unregister(struct ba_transport_midi *midi) {
+	debug("%s: %p", __func__, (void *)midi); (void)midi; }
 int bluealsa_dbus_pcm_register(struct ba_transport_pcm *pcm) {
 	debug("%s: %p", __func__, (void *)pcm);
 	pcm->ba_dbus_exported = true;

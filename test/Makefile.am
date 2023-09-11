@@ -224,6 +224,12 @@ test_a2dp_SOURCES += ../src/a2dp-ldac.c
 test_io_SOURCES += ../src/a2dp-ldac.c
 endif
 
+if ENABLE_MIDI
+test_ba_SOURCES += ../src/ba-transport-midi.c
+test_io_SOURCES += ../src/ba-transport-midi.c
+test_rfcomm_SOURCES += ../src/ba-transport-midi.c
+endif
+
 if ENABLE_MPEG
 test_a2dp_SOURCES += ../src/a2dp-mpeg.c
 test_io_SOURCES += ../src/a2dp-mpeg.c

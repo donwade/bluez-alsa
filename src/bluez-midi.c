@@ -376,6 +376,8 @@ GDBusObjectManagerServer *bluez_midi_app_new(
 		error("Couldn't create local MIDI transport: %s", strerror(errno));
 	else if (ba_transport_acquire(t) == -1)
 		error("Couldn't acquire local MIDI transport: %s", strerror(errno));
+	else if (ba_transport_start(t) == -1)
+		error("Couldn't start local MIDI transport: %s", strerror(errno));
 	app->t = t;
 
 	g_object_unref(msg);

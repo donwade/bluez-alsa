@@ -24,7 +24,9 @@
 
 #include "a2dp.h"
 #include "ba-device.h"
+#include "ba-transport-midi.h"
 #include "ba-transport-pcm.h"
+#include "ble-midi.h"
 #include "bluez.h"
 #include "shared/a2dp-codecs.h"
 
@@ -263,6 +265,15 @@ struct ba_transport {
 
 #if ENABLE_MIDI
 		struct {
+
+			struct ba_transport_midi midi_in;
+			struct ba_transport_midi midi_out;
+
+			/* BLE-MIDI parser for the incoming data. */
+			struct ble_midi parser;
+
+			/* Watch ID associated with the BLE-MIDI link. */
+			unsigned int fd_watch_id;
 
 			/* The rare end of the BLE-MIDI link. This FD is passed to the BlueZ
 			 * GATT subsystem which is responsible for BT data transport. */
