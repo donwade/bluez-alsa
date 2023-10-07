@@ -6,7 +6,7 @@ bluealsa-cli
 a simple command line interface for the BlueALSA D-Bus API
 ----------------------------------------------------------
 
-:Date: July 2023
+:Date: October 2023
 :Manual section: 1
 :Manual group: General Commands Manual
 :Version: $VERSION$
@@ -22,6 +22,8 @@ DESCRIPTION
 **bluealsa-cli** provides command-line access to the BlueALSA D-Bus API
 "org.bluealsa.Manager1" and "org.bluealsa.PCM1" interfaces and thus allows
 introspection and some control of BlueALSA PCMs while they are running.
+If MIDI support was enabled during compilation, it also allows interaction
+with BlueALSA MIDI interfaces.
 
 OPTIONS
 =======
@@ -211,9 +213,15 @@ monitor [-p[PROPS] | --properties[=PROPS]]
     printed. If this argument is not given then changes to any of the above
     properties are printed.
 
-open *PCM_PATH*
-    Transfer raw audio frames to or from the given PCM. For sink PCMs
-    the frames are read from standard input and written to the PCM. For
+open *MIDI_PATH*/*PCM_PATH*
+    Transfer raw data to or from the given BlueALSA D-Bus object path. The
+    path must be a BlueALSA MIDI or PCM D-Bus path.
+
+    In case of MIDI path, this command transfers raw MIDI messages which
+    shall conform to the MIDI 1.0 specification.
+
+    In case of PCM path, this command transfers raw audio frames. For sink
+    PCMs the frames are read from standard input and written to the PCM. For
     source PCMs the frames are read from the PCM and written to standard
     output. The format, channels and sampling rate must match the properties
     of the PCM, as no format conversions are performed by this tool.

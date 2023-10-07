@@ -1,6 +1,6 @@
 /*
  * BlueALSA - dbus-client.c
- * Copyright (c) 2016-2022 Arkadiusz Bokowy
+ * Copyright (c) 2016-2023 Arkadiusz Bokowy
  *
  * This file is a part of bluez-alsa.
  *
@@ -9,6 +9,10 @@
  */
 
 #include "shared/dbus-client.h"
+
+#if HAVE_CONFIG_H
+# include <config.h>
+#endif
 
 #include <errno.h>
 #include <stdbool.h>
@@ -408,6 +412,40 @@ void bluealsa_dbus_props_free(
 		props->codecs = NULL;
 	}
 }
+
+#if ENABLE_MIDI
+/**
+ * Open BlueALSA raw MIDI stream. */
+dbus_bool_t bluealsa_dbus_midi_open(
+		struct ba_dbus_ctx *ctx,
+		const char *midi_path,
+		int *fd_midi,
+		DBusError *error) {
+
+	DBusMessage *msg;
+	if ((msg = dbus_message_new_method_call(ctx->ba_service, midi_path,
+					BLUEALSA_INTERFACE_MIDI, "Open")) == NULL) {
+		dbus_set_error(error, DBUS_ERROR_NO_MEMORY, NULL);
+		return FALSE;
+	}
+
+	DBusMessage *rep;
+	if ((rep = dbus_connection_send_with_reply_and_block(ctx->conn,
+					msg, DBUS_TIMEOUT_USE_DEFAULT, error)) == NULL) {
+		dbus_message_unref(msg);
+		return FALSE;
+	}
+
+	dbus_bool_t rv;
+	rv = dbus_message_get_args(rep, error,
+			DBUS_TYPE_UNIX_FD, fd_midi,
+			DBUS_TYPE_INVALID);
+
+	dbus_message_unref(rep);
+	dbus_message_unref(msg);
+	return rv;
+}
+#endif
 
 /**
  * Callback function for rfcomm object properties parser. */

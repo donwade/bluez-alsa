@@ -1,6 +1,6 @@
 /*
  * BlueALSA - dbus-client.h
- * Copyright (c) 2016-2022 Arkadiusz Bokowy
+ * Copyright (c) 2016-2023 Arkadiusz Bokowy
  *
  * This file is a part of bluez-alsa.
  *
@@ -31,6 +31,7 @@
 
 #define BLUEALSA_SERVICE           "org.bluealsa"
 #define BLUEALSA_INTERFACE_MANAGER "org.bluealsa.Manager1"
+#define BLUEALSA_INTERFACE_MIDI    "org.bluealsa.MIDI1"
 #define BLUEALSA_INTERFACE_PCM     "org.bluealsa.PCM1"
 #define BLUEALSA_INTERFACE_RFCOMM  "org.bluealsa.RFCOMM1"
 
@@ -244,6 +245,14 @@ dbus_bool_t bluealsa_dbus_get_props(
 
 void bluealsa_dbus_props_free(
 		struct ba_service_props *props);
+
+#if ENABLE_MIDI
+dbus_bool_t bluealsa_dbus_midi_open(
+		struct ba_dbus_ctx *ctx,
+		const char *midi_path,
+		int *fd_midi,
+		DBusError *error);
+#endif
 
 dbus_bool_t bluealsa_dbus_get_rfcomm_props(
 		struct ba_dbus_ctx *ctx,
