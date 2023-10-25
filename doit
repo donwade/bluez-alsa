@@ -1,0 +1,150 @@
+#!/bin/bash
+
+function show()
+{
+    if [ -f $1 ]; then
+        GREEN "------- $1 ($2)"
+        ls -al $1
+        cat $1
+    else
+        RED "-------$1 ($2) file not found"
+    fi
+    echo 
+    YELLOW "--- $1 (above) -------- "
+    echo
+}
+#https://github.com/arkq/bluez-alsa/wiki/Installation-from-source
+
+#https://github.com/arkq/bluez-alsa/wiki/Installation-from-source#Additional-Dependencies
+
+# IMPORTANT : Installation options
+# By default, BlueALSA will use the install prefix /usr. !!!!!!
+# This is unusual for autoconf projects, which usually default to /usr/local. 
+# This choice was made because the alsa plugin modules must be installed 
+# in the same prefix as libasound, 
+# and most Linux distributions will have installed the alsa components in /usr.
+
+
+if [ ! -f TROUBLESHOOTING.md ]; then
+    RED "I dont think your in a dev directory"
+    exit
+fi
+
+if [ "$ARCH" != "aarch64" ]; then
+    RED "you are not a pi"
+    exit
+fi
+
+
+sudo apt-get install -y check libreadline-dev libspandsp-dev git automake build-essential libtool pkg-config python3-docutils
+sudo apt-get install -y libasound2-dev libbluetooth-dev libdbus-1-dev libglib2.0-dev libsbc-dev
+
+autoreconf --install --force
+rm -rf build
+mkdir build
+cd build
+
+../configure \
+    --with-libunwind \
+    --enable-debug  \
+    --enable-a2dpconf  \
+    --enable-cli  \
+    --enable-rfcomm  \
+    --enable-hcitop  \
+    --enable-aac  \
+    --enable-aptx  \
+    --with-libopenaptx  \
+    --enable-ofono  \
+    --enable-msbc  \
+    --enable-manpages  \
+    --enable-test 
+
+make -j3
+if [ $? != 0 ]; then
+    RED "Make failed"
+    exit
+fi
+
+BLINK_GREEN "make passed ... installing into /usr (not /usr/local) as per instructions"
+sudo make install
+if [ $? != 0 ]; then
+    BLINK_RED "install failed"
+else
+    GREEN "installed passed ...  files of interest are ..."
+    show /etc/alsa/conf.d/20-bluealsa.conf  "the setup file"
+fi
+
+CYAN "logs kept in /var/lib/bluealsa \n\n "
+
+#Debugging options
+#
+#    --enable-debug  [since v1.0.0]
+#    enable debugging support (a lot of debug text will be written to the stderr of both the daemon and the alsa client).
+#
+#    --enable-debug-time  [since v1.2.0]
+#    enable debug timing support
+#
+#    --with-libunwind  [since v3.0.0]
+#    use libunwind for call-stack unwinding - requires libunwind 1.1 or later.
+
+#A number of utility applications are included in the BlueALSA sources. These options determine whether they are built or not. See the linked manual page for more information about each utility.
+#
+#    --disable-aplay  [since v1.2.0]
+#    disable building of the bluealsa-aplay tool. See manual page.
+#    bluealsa-aplay is built by default - this option removes it from the build.
+#    bluealsa-aplay eequires libdbus 1.6 or later development headers and libraries.
+#
+#    --enable-a2dpconf  [since v3.0.0]
+#    enable building of the a2dpconf tool. a2dpconf is a simple tool for decoding A2DP configuration blobs.
+#
+#    --enable-cli  [since v3.1.0]
+#    enable building of the bluealsa-cli tool. See manual page.
+#    Requires libdbus (dbus-1 1.6 or later) development headers and libraries.
+#
+#    --enable-rfcomm   [since v1.3.0]
+#    enable building of the bluealsa-rfcomm tool. See manual page.
+#    Requires readline development headers and libraries.
+#
+#    --enable-hcitop  [since v1.3.0]
+#    enable building of hcitop tool. See manual page.
+#    Requires libbsd 0.8 or later and ncurses development headers and libraries.
+#
+
+#    --enable-a2dpconf --enable-cli --enable-rfcomm --enable-hcitop
+#----------------------------------------------------------------------------------
+#(*) - RaspberryPiOS repository does not have any built packages for fdk-aac
+#       so this must be built from source for this platform. 
+#       Upstream sources are maintained on GitHub at https://github.com/mstorsjo/fdk-aac
+
+#To generate a simple debug build, with no additional options:
+#../configure --enable-debug
+
+#To generate a debug build with support for AAC and compatible with older PulseAudio releases:
+#../configure --enable-debug --enable-aac --disable-payloadcheck
+
+#To generate a release build with support for AAC, aptX, oFono and mSBC:
+#../configure --enable-aac --enable-aptx --with-libopenaptx --enable-ofono --enable-msbc
+
+#To generate a release build with support for LDAC encoding and decoding (assuming that the full version of Sony libldac library was installed in the /opt/libldac directory):
+
+#export LDAC_ABR_CFLAGS="-I/opt/libldac/include" LDAC_ABR_LIBS="-L/opt/libldac/lib -lldacBT_abr"
+#export LDAC_DEC_CFLAGS="-I/opt/libldac/include" LDAC_DEC_LIBS="-L/opt/libldac/lib -lldacBT_dec"
+#export LDAC_ENC_CFLAGS="-I/opt/libldac/include" LDAC_ENC_LIBS="-L/opt/libldac/lib -lldacBT_enc"
+#../configure --enable-ldac
+
+
+#    --enable-manpages  [since v3.0.0]
+#Documentation options
+
+
+#    build and install manual pages for the bluealsa daemon, the BlueALSA ALSA plugins, and the enabled utilities. Requires the utility rst2man from the docutils project.
+#
+#Testing options
+#
+#    --enable-test  [since v1.4.0]
+#    build the unit test programs - requires check 0.9.10 or later testing framework. 
+#    Some of the tests also require sndfile 1.0 or later; 
+#    those tests will be omitted if sndfile is not available.
+#
+#    --with-coverage  [since v3.0.0]
+#    use lcov for test coverage reporting - requires lcov 1.14 or later.
